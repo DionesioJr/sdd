@@ -1,0 +1,19 @@
+# Configurações locais e segredos
+.claude/
+.env
+.env.*
+*.local
+.vercel/
+
+# Sistema
+Thumbs.db
+desktop.ini
+.DS_Store
+node_modules/
+
+# Referência visual de layout (arquivo pesado, fica só na máquina do professor)
+aula exemplo.pdf
+
+# Gerados por "node gerar-conteudo.mjs" (a Vercel gera no deploy)
+conteudo.js
+dist/

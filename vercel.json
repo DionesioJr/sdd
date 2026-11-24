@@ -1,0 +1,4 @@
+{
+  "buildCommand": "node gerar-conteudo.mjs --dist",
+  "outputDirectory": "dist"
+}

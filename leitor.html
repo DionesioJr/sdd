@@ -1,0 +1,1093 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leitor de Slides</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+/* ================= Tokens ================= */
+:root {
+  --bg: #f4f4f6; --chrome: #ffffff; --side: #fafafb; --text: #16181d; --muted: #525866;
+  --border: #e3e1dc; --accent: #e8461e; --accent-soft: #fdeee8; --accent-ink: #b8360f; --inline-bg: #efece6;
+  --slide: #ffffff; --card: #f7f7fb; --code-bg: #f3f4f7; --canvas: #e8e9ee;
+  --note-bg: #fffaf0; --note-border: #efd28a;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --mono: "Cascadia Code", ui-monospace, Consolas, monospace;
+}
+:root[data-theme="dark"] {
+  --bg: #121318; --chrome: #181a20; --side: #15171c; --text: #e8e9ee; --muted: #9aa0ad;
+  --border: #2a2d36; --accent: #ff6b45; --accent-soft: #3a2119; --accent-ink: #ffb39c; --inline-bg: #2a2c33;
+  --slide: #1c1e25; --card: #23262f; --code-bg: #262934; --canvas: #0e0f13;
+  --note-bg: #29251a; --note-border: #6f5d28;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); display: flex; overflow: hidden; }
+button { font: inherit; cursor: pointer; color: inherit; }
+
+
+/* ================= Barras de rolagem ================= */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb { background: transparent; border-radius: 99px; border: 3px solid transparent; background-clip: padding-box; }
+:hover::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--muted) 35%, transparent); }
+::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 35%, transparent) transparent; }
+}
+#nav, #thumbs, #page, #docview { scroll-behavior: smooth; overscroll-behavior: contain; }
+
+/* ================= Sidebar ================= */
+aside { width: 300px; min-width: 300px; background: var(--side); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; height: 100vh; }
+.brand { padding: 16px 16px 12px; display: flex; align-items: center; gap: 10px; }
+.brand .logo { width: 32px; height: 32px; border-radius: 9px; background: var(--accent); color: #fff; flex: none;
+  display: grid; place-items: center; font-weight: 800; font-size: 13px; letter-spacing: .02em; border: 0; }
+.brand h1 { font-size: 13.5px; line-height: 1.25; margin: 0; flex: 1; font-weight: 700; cursor: pointer; }
+.icon-btn { background: transparent; border: 1px solid var(--border); border-radius: 8px; width: 34px; height: 34px;
+  display: inline-grid; place-items: center; flex: none; }
+.icon-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+.side-search { padding: 0 16px 10px; position: relative; }
+.side-search input { width: 100%; padding: 8px 34px 8px 11px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--chrome); color: var(--text); font: inherit; font-size: 13px; }
+.side-search input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.side-search kbd { position: absolute; right: 24px; top: 7px; font: 600 11px var(--mono); color: var(--muted);
+  border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; background: var(--side); pointer-events: none; }
+.side-search input:focus + kbd, .side-search input:not(:placeholder-shown) + kbd { display: none; }
+nav { flex: 1; overflow-y: auto; padding: 2px 10px 16px; font-size: 13.5px; }
+.nav-home { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0;
+  padding: 7px 10px; border-radius: 7px; font-weight: 600; }
+.nav-home:hover { background: var(--accent-soft); }
+.nav-home.active { background: var(--accent-soft); color: var(--accent-ink); }
+.lvl-label { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  padding: 18px 10px 6px; }
+.mod-row { display: grid; grid-template-columns: 24px 1fr auto; gap: 6px; width: 100%; text-align: left; background: none;
+  border: 0; padding: 6px 10px; border-radius: 7px; align-items: baseline; line-height: 1.35; }
+.mod-row .mnum { font: 700 11px var(--mono); color: var(--muted); }
+.mod-row .mp { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mod-row:hover { background: var(--accent-soft); }
+.mod-row.open { font-weight: 600; }
+.mod-row.open .mnum { color: var(--accent); }
+.mod-row.active { background: var(--accent-soft); color: var(--accent-ink); }
+.les-rows { margin: 2px 0 8px 21px; border-left: 1px solid var(--border); padding-left: 6px; }
+.les-row { display: grid; grid-template-columns: 10px 1fr; gap: 9px; align-items: baseline; width: 100%; text-align: left;
+  background: none; border: 0; padding: 5px 8px; border-radius: 6px; font-size: 13px; line-height: 1.35; }
+.les-row:hover { background: var(--accent-soft); }
+.st { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--muted); opacity: .7; align-self: center; flex: none; }
+.started .st { border-color: var(--accent); opacity: 1; }
+.done .st { background: var(--accent); border-color: var(--accent); opacity: 1; }
+.les-row.active { background: var(--accent); color: #fff; }
+.les-row.active .st { border-color: #fff; opacity: 1; }
+.les-row.active.done .st { background: #fff; }
+details.prof { margin-top: 18px; }
+details.prof > summary { cursor: pointer; list-style: none; font-size: 10.5px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); padding: 6px 10px; border-radius: 6px; }
+details.prof > summary::-webkit-details-marker { display: none; }
+details.prof > summary::after { content: " +"; }
+details.prof[open] > summary::after { content: " \2212"; }
+.doc-row { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 5px 10px; border-radius: 6px; font-size: 13px; }
+.doc-row:hover { background: var(--accent-soft); }
+.doc-row.active { background: var(--accent); color: #fff; }
+.empty-nav { color: var(--muted); padding: 12px 10px; }
+/* resultados da busca */
+.res-count { font-size: 12px; color: var(--muted); padding: 2px 10px 6px; }
+.res-group { font-size: 11px; font-weight: 700; color: var(--accent-ink); padding: 14px 10px 4px; line-height: 1.35; }
+.res { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 6px 10px; border-radius: 7px; }
+.res:hover { background: var(--accent-soft); }
+.res b { display: block; font-size: 13px; font-weight: 600; line-height: 1.35; }
+.res span { display: block; font-size: 12px; color: var(--muted); line-height: 1.45; margin-top: 1px; }
+mark { background: color-mix(in srgb, var(--accent) 22%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+
+/* ================= Main ================= */
+main { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; }
+.topbar { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--border);
+  background: var(--chrome); min-height: 52px; }
+.crumbs { flex: 1; min-width: 0; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crumbs b { color: var(--text); font-weight: 600; }
+.crumbs a { color: inherit; text-decoration: none; cursor: pointer; }
+.crumbs a:hover { color: var(--accent); }
+.crumbs .sep { margin: 0 8px; opacity: .5; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { background: none; border: 0; padding: 6px 12px; font-size: 13px; color: var(--muted); }
+.seg button.on { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+.toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); user-select: none; cursor: pointer; }
+.toggle input { accent-color: var(--accent); }
+.btn { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; font-weight: 600; font-size: 13px; white-space: nowrap; }
+.btn:hover { filter: brightness(1.1); }
+#menu { display: none; }
+.workspace { flex: 1; display: flex; min-height: 0; }
+
+/* ---------- miniaturas ---------- */
+#thumbs { width: 212px; min-width: 212px; overflow-y: auto; background: var(--side); border-right: 1px solid var(--border); padding: 12px 10px 24px; }
+.thumb { display: flex; gap: 6px; margin-bottom: 12px; cursor: pointer; }
+.thumb .n { width: 18px; text-align: right; font-size: 11px; color: var(--muted); padding-top: 2px; font-variant-numeric: tabular-nums; }
+.thumb .t { width: 168px; height: 94.5px; position: relative; overflow: hidden; border-radius: 4px;
+  outline: 1px solid var(--border); background: var(--slide); }
+.thumb .t .stage { transform: scale(.13125); }
+.thumb:hover .t { outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent); }
+.thumb.active .t { outline: 2.5px solid var(--accent); }
+.thumb.active .n { color: var(--accent); font-weight: 700; }
+
+/* ---------- área do slide ---------- */
+#center { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--canvas); }
+#viewer { flex: 1; min-height: 0; display: grid; place-items: center; padding: 24px; }
+.frame { position: relative; box-shadow: 0 1px 2px #0002, 0 12px 40px #0002; border-radius: 6px; overflow: hidden; background: var(--slide); }
+.ctrl { display: flex; justify-content: center; align-items: center; gap: 14px; padding: 0 0 12px; font-size: 13px; color: var(--muted); }
+.ctrl button { background: var(--chrome); border: 1px solid var(--border); border-radius: 99px; width: 34px; height: 34px; font-size: 18px; line-height: 1; }
+.ctrl button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.ctrl button:disabled { opacity: .35; cursor: default; }
+.ctrl .next-lesson { width: auto !important; border-radius: 99px; padding: 0 16px; font-size: 13px !important; font-weight: 600;
+  background: var(--accent) !important; color: #fff; border-color: var(--accent) !important; max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctrl .next-lesson:hover { filter: brightness(1.08); color: #fff !important; }
+.ctrl .count { min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
+#notespane { border-top: 1px solid var(--border); background: var(--chrome); padding: 10px 24px 12px; max-height: 24vh; overflow-y: auto;
+  font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
+#notespane .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px; white-space: normal; }
+#notespane.empty { color: var(--muted); font-style: italic; padding-top: 6px; padding-bottom: 6px; font-size: 12.5px; }
+#notespane.empty .lbl { display: inline; margin-right: 8px; }
+.hide-notes #notespane { display: none; }
+
+/* ---------- modo documento ---------- */
+#docview { flex: 1; overflow-y: auto; padding: 40px 24px 80px; background: var(--bg); }
+.mode-doc #thumbs, .mode-doc #center { display: none; }
+.mode-slides #docview { display: none; }
+article.doc { max-width: 820px; margin: 0 auto; font-size: 17px; line-height: 1.7; }
+article.doc .unit + .unit { border-top: 1px dashed var(--border); margin-top: 2.4em; padding-top: 1.6em; }
+article.doc h1 { font-family: var(--display); font-size: 2.2rem; line-height: 1.2; margin: .2em 0 .6em; letter-spacing: -.02em; }
+article.doc h2 { font-size: 1.5rem; margin: 1.6em 0 .5em; }
+article.doc h3 { font-size: 1.15rem; margin: 1.3em 0 .4em; }
+.note { margin: 1.4em 0 0; padding: 12px 16px; background: var(--note-bg); border: 1px dashed var(--note-border);
+  border-radius: 10px; font-size: 14.5px; line-height: 1.6; white-space: pre-wrap; }
+.note strong { display: block; text-transform: uppercase; font-size: 11px; letter-spacing: .08em; color: var(--muted); white-space: normal; }
+.hide-notes .note { display: none; }
+.pager { max-width: 820px; margin: 48px auto 0; display: flex; gap: 12px; }
+.pager button { flex: 1; text-align: left; background: var(--chrome); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; min-width: 0; }
+.pager button:hover { border-color: var(--accent); }
+.pager .next { text-align: right; }
+.pager small { display: block; color: var(--muted); font-size: 12px; }
+.pager span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.copy { position: absolute; top: 8px; right: 8px; font-size: 12px; padding: 3px 9px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--chrome); color: var(--muted); opacity: 0; transition: opacity .15s; }
+pre:hover .copy { opacity: 1; }
+.welcome { max-width: 520px; margin: 16vh auto 0; text-align: center; color: var(--muted); line-height: 1.6; }
+.welcome h2 { color: var(--text); font-size: 1.6rem; }
+
+
+/* ================= Páginas: mapa do curso e módulo ================= */
+#page { flex: 1; overflow-y: auto; background: var(--bg); }
+body:not([data-view=lesson]) #thumbs, body:not([data-view=lesson]) #center, body:not([data-view=lesson]) #docview { display: none; }
+body[data-view=lesson] #page { display: none; }
+body:not([data-view=lesson]) .lesson-only { display: none !important; }
+.pg { max-width: 1060px; margin: 0 auto; padding: 44px 40px 96px; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.hero h1, .mod-head h1 { font: 700 38px/1.12 var(--display); letter-spacing: -.02em; margin: 8px 0 12px; }
+.hero p, .mod-head p.obj { color: var(--muted); font-size: 16.5px; line-height: 1.6; max-width: 760px; margin: 0; }
+.hero p b, .mod-head p b { color: var(--text); }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 22px; color: var(--muted); font-size: 13.5px; margin: 18px 0 22px; }
+.stats b { color: var(--text); font-size: 15px; margin-right: 3px; }
+.cta { display: inline-flex; align-items: center; gap: 10px; background: var(--accent); color: #fff; border: 0; border-radius: 10px;
+  padding: 11px 18px; font-weight: 600; font-size: 14px; text-align: left; }
+.cta small { display: block; font-weight: 400; opacity: .85; font-size: 12px; }
+.cta:hover { filter: brightness(1.08); }
+.cta.ghost { background: var(--chrome); color: var(--text); border: 1px solid var(--border); }
+.cta.ghost:hover { border-color: var(--accent); filter: none; }
+.ctas { display: flex; flex-wrap: wrap; gap: 10px; }
+.level { margin-top: 46px; }
+.level-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 16px; }
+.level-head .lvl { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink);
+  background: var(--accent-soft); border-radius: 99px; padding: 3px 10px; }
+.level-head h2 { font-size: 20px; margin: 0; }
+.level-head p { color: var(--muted); margin: 0; font-size: 14px; }
+.mod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 12px; }
+.mod-card { text-align: left; background: var(--chrome); border: 1px solid var(--border); border-radius: 12px; padding: 16px 16px 14px;
+  display: flex; flex-direction: column; gap: 6px; min-height: 160px; transition: border-color .15s, transform .15s, box-shadow .15s; }
+.mod-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 24px #0000000f; }
+.mod-card .mnum { font: 800 12px var(--mono); color: var(--accent); letter-spacing: .04em; }
+.mod-card h3 { margin: 0; font-size: 16px; line-height: 1.3; }
+.mod-card p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; flex: 1; }
+.meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.meter { flex: 1; max-width: 90px; height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.back { background: none; border: 0; color: var(--muted); font-size: 13px; padding: 0; margin-bottom: 22px; }
+.back:hover { color: var(--accent); }
+.mod-head .q { font-size: 18px; font-weight: 600; margin: 0 0 10px; }
+.les-list { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 12px; background: var(--chrome); overflow: hidden; margin-top: 28px; }
+.les { display: grid; grid-template-columns: 40px 1fr auto; gap: 16px; align-items: center; padding: 15px 18px; text-align: left;
+  border: 0; background: none; border-bottom: 1px solid var(--border); }
+.les:last-child { border-bottom: 0; }
+.les:hover { background: var(--accent-soft); }
+.les .ln { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font: 700 13px var(--mono);
+  border: 1.5px solid var(--border); color: var(--muted); }
+.les.started .ln { border-color: var(--accent); color: var(--accent); }
+.les.done .ln { background: var(--accent); border-color: var(--accent); color: #fff; }
+.les h3 { margin: 0; font-size: 16px; }
+.les p { margin: 3px 0 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.les .cnt { font-size: 12px; color: var(--muted); white-space: nowrap; text-align: right; }
+.les .cnt b { display: block; color: var(--accent-ink); font-weight: 600; }
+.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 16px; }
+.info { background: var(--chrome); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; font-size: 14.5px; line-height: 1.6; }
+.info h4 { margin: 0 0 4px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.info > div > :first-child { margin-top: 0; } .info > div > :last-child { margin-bottom: 0; }
+details.why { margin-top: 16px; background: var(--chrome); border: 1px solid var(--border); border-radius: 12px; padding: 12px 18px; font-size: 14.5px; line-height: 1.6; }
+details.why > summary { cursor: pointer; font-weight: 600; }
+.mod-pager { display: flex; gap: 12px; margin-top: 32px; }
+.mod-pager button { flex: 1; text-align: left; background: var(--chrome); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; min-width: 0; }
+.mod-pager button:hover { border-color: var(--accent); }
+.mod-pager .next { text-align: right; }
+.mod-pager small { display: block; color: var(--muted); font-size: 12px; }
+.prof-links { margin-top: 46px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.prof-links button { background: none; border: 0; color: var(--muted); padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+.prof-links button:hover { color: var(--accent); }
+
+/* ================= Conteúdo Markdown (comum a slide e documento) ================= */
+.md a { color: var(--accent); text-underline-offset: 3px; }
+.md img { max-width: 100%; border-radius: 8px; }
+.md strong { font-weight: 700; }
+.md p { margin: .45em 0; }
+.md p.lead { font-weight: 700; margin-bottom: .25em; }
+.md ul, .md ol { margin: .35em 0; }
+.md ul { padding-left: 1.1em; }
+.md ul > li::marker { color: var(--accent); }
+.md li { margin: .2em 0; padding-left: .1em; }
+.md ol { list-style: none; padding-left: 0; counter-reset: n; }
+.md ol > li { counter-increment: n; position: relative; padding-left: 1.8em; margin: .35em 0; }
+.md ol > li::before { content: counter(n); position: absolute; left: 0; top: .2em; width: 1.3em; height: 1.3em; border-radius: 50%;
+  background: var(--accent); color: #fff; font-size: .78em; font-weight: 700; display: grid; place-items: center; line-height: 1; }
+.md code { font-family: var(--mono); font-size: .84em; background: var(--inline-bg); padding: .08em .35em; border-radius: 5px; font-weight: 600; }
+.md .term { margin: .65em 0; border-radius: 12px; background: #1d1f24; overflow: hidden; position: relative; }
+.md .term-bar { display: flex; align-items: center; gap: .45em; padding: .7em 1em .1em; font: 600 15px var(--mono); color: #8b8f99; }
+.md .term-bar i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f56; }
+.md .term-bar i:nth-child(2) { background: #ffbd2e; } .md .term-bar i:nth-child(3) { background: #27c93f; margin-right: .5em; }
+.md pre { position: relative; margin: 0; }
+.md pre code, .md pre code.hljs { display: block; padding: .45em 1.1em .8em; overflow-x: auto; background: transparent; color: #e6e6e6;
+  font-size: .72em; line-height: 1.55; border-radius: 0; font-weight: 400; }
+.md blockquote { margin: .6em 0; padding: .45em .9em; background: var(--card); border: 1px solid var(--border); border-left: 5px solid var(--accent); border-radius: 10px; }
+.md blockquote > :first-child { margin-top: 0; } .md blockquote > :last-child { margin-bottom: 0; }
+.md .table-wrap { overflow-x: auto; margin: .6em 0; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: .1em .8em; }
+.md table { border-collapse: collapse; width: 100%; font-size: .82em; }
+.md th, .md td { padding: .45em .6em; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+.md tr:last-child td { border-bottom: 0; }
+.md th { font-size: .66em; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; padding-top: .8em; }
+.md td:first-child { font-weight: 700; }
+.md hr { border: 0; border-top: 1px solid var(--border); margin: 1.2em 0; }
+.md input[type=checkbox] { accent-color: var(--accent); margin-right: 6px; }
+/* blocos derivados do MD */
+.md .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .35em .3em; margin: .6em 0; }
+.md .flow-label { font-weight: 700; margin-right: .3em; }
+.md .step { display: inline-flex; align-items: center; gap: .3em; }
+.md .arr { color: var(--accent); font-weight: 700; }
+.md .pill { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: .28em .7em; font-weight: 700; font-size: .82em; }
+.md .step:last-child .pill { background: var(--accent); border-color: var(--accent); color: #fff; }
+.md .callout { position: relative; background: var(--accent-soft); border-radius: 12px; padding: .55em .9em .55em 2.3em; margin: .7em 0; }
+.md .callout::before { content: "›"; position: absolute; left: .6em; top: .62em; width: 1.25em; height: 1.25em; border-radius: 50%;
+  background: var(--text); color: var(--card); display: grid; place-items: center; font-weight: 900; font-size: .9em; line-height: 1; padding-bottom: .08em; }
+.md .callout > strong:first-child { color: var(--accent-ink); }
+.md .subtitle { color: var(--muted); font-size: .8em; margin: .3em 0 0; }
+.md .subtitle em { font-style: normal; }
+.md .grid { display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); gap: .5em; margin: .5em 0; }
+.md .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: .6em .8em .5em; }
+.md .card > h3 { font-size: 1em; margin: 0 0 .3em; }
+.md .card .num { display: block; color: var(--accent); font-size: .6em; font-weight: 700; letter-spacing: .1em; margin-bottom: .25em; }
+.md .card > ul, .md .card > ol, .md .card > p { font-size: .86em; }
+.md .card li { margin: .12em 0; }
+.md .card .flow { font-size: .85em; }
+.md .card > :last-child { margin-bottom: 0; }
+
+/* ================= Palco do slide (1280 × 720) ================= */
+.stage { --slide: #f8f7f4; --text: #151515; --muted: #5f5f5f; --border: #e4e1da; --card: #ffffff;
+  --accent: #f04e23; --accent-ink: #c43a14; --accent-soft: #fdeee8; --inline-bg: #ece9e3;
+  position: absolute; top: 0; left: 0; width: 1280px; height: 720px; transform-origin: 0 0; font-family: var(--font);
+  background: var(--slide); color: var(--text); display: flex; flex-direction: column; padding: 50px 72px 0; overflow: hidden; }
+.stage.dark { --slide: #141414; --text: #ffffff; --muted: #a7a7a7; --border: #2e2e2e; --card: #1f1f1f;
+  --accent-soft: #2b1c16; --accent-ink: #ff8a66; --inline-bg: #2a2a2a; }
+.eyebrow-t { font-size: 18px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+.s-head h1, .s-head h2 { font-family: var(--display); font-size: 54px; line-height: 1.12; letter-spacing: -.015em; margin: 0; font-weight: 700; }
+.s-head .subtitle { font-size: 26px; margin-top: 8px; }
+.s-body { flex: 1; min-height: 0; overflow: hidden; font-size: 34px; line-height: 1.4; padding-top: 22px; }
+.s-body > :first-child { margin-top: 0; }
+.s-body h2 { font-size: 1.1em; margin: .7em 0 .25em; }
+.s-body h3 { font-size: 1em; margin: .6em 0 .2em; }
+.s-foot { height: 48px; flex: none; display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 15px; color: var(--muted); }
+.s-foot span:first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.stage.scroll .s-body { overflow-y: auto; }
+/* capa */
+.stage.capa .s-body { display: flex; align-items: center; padding-top: 0; }
+.cover { display: grid; grid-template-columns: 1.1fr 1fr; gap: 1.4em; align-items: center; width: 100%; }
+.cover.solo { grid-template-columns: 1fr; }
+.cover .eyebrow-t { font-size: .5em; display: flex; align-items: center; gap: .6em; margin-bottom: .8em; }
+.cover .eyebrow-t::before { content: ""; width: .75em; height: .75em; border-radius: 50%; background: var(--accent); flex: none; }
+.cover h1 { font-family: var(--display); font-size: 2.05em; line-height: 1.08; letter-spacing: -.02em; margin: 0 0 .55em; font-weight: 700; }
+.cover .author { font-weight: 700; font-size: .72em; margin: 0; }
+.cover .badge-pill { display: inline-block; background: var(--text); color: var(--slide); border-radius: 99px; padding: .4em 1.2em; font-weight: 700; font-size: .5em; margin-top: 1.1em; }
+.cover-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: .8em 1em; font-size: .78em; box-shadow: 0 12px 32px #0000000f; }
+.cover-card > :first-child { margin-top: 0; } .cover-card > :last-child { margin-bottom: 0; }
+.cover-card .lead { color: var(--accent); text-transform: uppercase; letter-spacing: .12em; font-size: .6em; }
+/* seção (fundo escuro, número grande) */
+.stage.secao .s-body { display: flex; flex-direction: column; justify-content: center; padding-top: 0; }
+.sec-num { font-family: var(--display); font-size: 3.6em; font-weight: 800; color: var(--accent); line-height: 1; margin-bottom: .2em; }
+.stage.secao .s-body > h1, .stage.secao .s-body > h2 { font-family: var(--display); font-size: 2em; line-height: 1.1; margin: 0 0 .35em; }
+.stage.secao .s-body > p { color: #f5b25c; font-size: .8em; }
+
+/* ================= Apresentação ================= */
+#pres { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; flex-direction: column; }
+#pres[hidden] { display: none; }
+#pres .bar { height: 3px; background: #222; } #pres .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s; }
+#pview { flex: 1; min-height: 0; display: grid; place-items: center; }
+#pview .frame { box-shadow: none; border-radius: 0; animation: fade .28s ease; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.nav-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 56px; height: 96px; border: 0; border-radius: 12px;
+  background: #fff1; color: #fff; font-size: 40px; opacity: 0; transition: opacity .2s; z-index: 2; }
+.nav-btn.l { left: 10px; } .nav-btn.r { right: 10px; }
+#pres:hover .nav-btn { opacity: .5; } .nav-btn:hover { opacity: 1 !important; }
+#pnotes { display: none; max-height: 30vh; overflow-y: auto; padding: 14px 6vw; background: #15161b; color: #e8e9ee;
+  border-top: 1px solid #333; font-size: 18px; line-height: 1.55; white-space: pre-wrap; }
+#pnotes strong { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #9aa0ad; }
+#pres.show-notes #pnotes { display: block; }
+#pres .foot { display: flex; gap: 16px; padding: 7px 20px; font-size: 12.5px; color: #8a8f99; }
+#pres .foot #ptitle { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 900px) {
+  aside { position: fixed; z-index: 10; left: 0; top: 0; transform: translateX(-100%); transition: transform .2s; }
+  body.menu-open aside { transform: none; box-shadow: 0 0 40px #0006; }
+  #menu { display: inline-grid; }
+  #thumbs, .toggle { display: none !important; }
+  .pg { padding: 28px 18px 64px; }
+  #viewer { padding: 12px; }
+  .crumbs { display: none; }
+  .topbar { justify-content: space-between; }
+}
+</style>
+</head>
+<body class="mode-slides">
+<aside>
+  <div class="brand">
+    <button class="logo" id="homeLogo" title="Mapa do curso">IA</button>
+    <h1 id="brandTitle">Desenvolvimento de Software com IA</h1>
+    <button class="icon-btn" id="theme" title="Alternar tema">◐</button>
+  </div>
+  <div class="side-search">
+    <input id="q" type="search" placeholder="Buscar em todas as aulas" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <nav id="nav"><div class="empty-nav">Carregando o curso.</div></nav>
+</aside>
+
+<main>
+  <div class="topbar">
+    <button class="icon-btn" id="menu" title="Menu">☰</button>
+    <div class="crumbs" id="crumbs"></div>
+    <div class="seg lesson-only" id="modeSeg"><button data-m="slides" class="on">Slides</button><button data-m="doc">Leitura</button></div>
+    <label class="toggle lesson-only"><input type="checkbox" id="notes"> Notas do professor</label>
+    <button class="btn lesson-only" id="present" title="Atalho: F5 ou P">▶ Apresentar</button>
+  </div>
+  <div class="workspace">
+    <div id="page"><div class="welcome"><h2>Carregando o curso</h2></div></div>
+    <div id="thumbs"></div>
+    <div id="center">
+      <div id="viewer"></div>
+      <div class="ctrl" id="ctrl" hidden><button id="prev" title="Anterior (←)">‹</button><span class="count" id="count"></span><button id="next" title="Próximo (→)">›</button><button class="next-lesson" id="nextLesson" hidden></button></div>
+      <div id="notespane" hidden></div>
+    </div>
+    <div id="docview"><article class="doc md" id="doc"></article></div>
+  </div>
+</main>
+
+<div id="pres" hidden>
+  <div class="bar"><i id="pbar"></i></div>
+  <button class="nav-btn l" id="pprev" title="Anterior (←)">‹</button>
+  <button class="nav-btn r" id="pnext" title="Próximo (→)">›</button>
+  <div id="pview"></div>
+  <div id="pnotes"><strong>Notas do professor</strong><div id="pnotes-body"></div></div>
+  <div class="foot"><span id="pcount"></span><span id="ptitle"></span><span>← → navegar · N notas · F tela cheia · Esc sair</span></div>
+</div>
+
+<script src="conteudo.js" onerror="void 0"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const collator = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
+const SKIP = /(^|\/)(node_modules|\.git|\.claude)(\/|$)/;
+const W = 1280, H = 720;
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+
+let files = new Map();   // caminho -> File
+let docs = [];           // {path, title, text, units[]}
+let units = [];          // slides em ordem global: {doc, i, md, notes, layout, lesson?}
+let cur = -1;            // índice em units
+let view = 'home';       // home | module | lesson
+let mode = store.get('mode') === 'doc' ? 'doc' : 'slides';
+let modules = [], lessons = [], levels = [], profDocs = [], searchIdx = [];
+const decks = new Map(); // chave -> lista de units (aula inteira ou documento solto)
+const urls = new Map();
+const prog = (() => { try { return JSON.parse(store.get('prog') || '{}'); } catch { return {}; } })();
+const saveProg = () => store.set('prog', JSON.stringify(prog));
+const dirOf = p => p.split('/').slice(0, -1).join('/');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const inl = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\*([^*]+)\*/g, '<i>$1</i>');
+const norm = s => s.split('').map(c => c.normalize('NFD')[0]).join('').toLowerCase();
+const h = (tag, attrs = {}, html = '') => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k === 'onclick') e.onclick = v; else e.setAttribute(k, v); } e.innerHTML = html; return e; };
+
+/* ---------- tema, modo, notas ---------- */
+function setTheme(t) { document.documentElement.dataset.theme = t; store.set('theme', t); }
+setTheme(store.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+$('#theme').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+$('#notes').checked = store.get('notes') === '1';
+document.body.classList.toggle('hide-notes', !$('#notes').checked);
+$('#notes').onchange = e => { document.body.classList.toggle('hide-notes', !e.target.checked); store.set('notes', e.target.checked ? '1' : '0'); if (mode === 'slides') scaleAll(); };
+$('#menu').onclick = () => document.body.classList.toggle('menu-open');
+$('#homeLogo').onclick = $('#brandTitle').onclick = () => go('#/');
+function setMode(m) {
+  mode = m; store.set('mode', m);
+  document.body.classList.toggle('mode-doc', m === 'doc'); document.body.classList.toggle('mode-slides', m === 'slides');
+  document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  $('#thumbs').dataset.deck = ''; if (cur >= 0 && view === 'lesson') show(cur);
+}
+document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => setMode(b.dataset.m));
+setMode(mode);
+function setView(v) { view = v; document.body.dataset.view = v; document.body.classList.remove('menu-open'); }
+setView('home');
+
+/* ---------- carregar arquivos ---------- */
+addEventListener('DOMContentLoaded', () => {
+  if (!window.CONTEUDO) { $('#page').innerHTML = '<div class="welcome"><h2>Conteúdo não encontrado</h2><p>Gere o <code>conteudo.js</code> com <code>gerar-conteudo.ps1</code>.</p></div>'; return; }
+  const map = new Map();
+  for (const [p, t] of Object.entries(window.CONTEUDO)) map.set(p, new File([t], p.split('/').pop()));
+  load(map);
+});
+/* Divide um .md em slides: linha "---" (fora de bloco de código) separa slides.
+   Arquivos longos sem "---" são divididos automaticamente em cada "## ". */
+function splitUnits(text) {
+  const lines = text.split(/\r?\n/);
+  const cut = (test, src = lines) => { let fence = false; const out = [[]];
+    for (const l of src) {
+      if (/^\s*(```|~~~)/.test(l)) fence = !fence;
+      const r = !fence && test(l);
+      if (r === 'drop') { out.push([]); continue; }
+      if (r === 'keep' && out.at(-1).some(x => x.trim())) out.push([]);
+      out.at(-1).push(l);
+    }
+    return out.map(c => c.join('\n')).filter(c => c.replace(/<!--[\s\S]*?-->/g, '').trim());
+  };
+  const parts = cut(l => /^\s*---\s*$/.test(l) ? 'drop' : null).flatMap(p => {
+    const ls = p.split('\n');
+    const long = ls.filter(l => l.trim() && !/^\s*<!--/.test(l)).length > 30;
+    return long && ls.filter(l => /^##\s/.test(l)).length >= 2 ? cut(l => /^##\s/.test(l) ? 'keep' : null, ls) : [p];
+  });
+  return parts.length ? parts : [text];
+}
+
+async function load(map) {
+  files = map; urls.forEach(u => URL.revokeObjectURL(u)); urls.clear();
+  const mds = [...map.keys()].filter(p => /\.md$/i.test(p));
+  docs = await Promise.all(mds.map(async p => {
+    const text = await map.get(p).text();
+    const m = text.replace(/<!--[\s\S]*?-->/g, '').match(/^\s*#\s+(.+)$/m);
+    return { path: p, title: m ? m[1].trim() : p.split('/').pop().replace(/\.md$/i, ''), text };
+  }));
+  docs.sort((a, b) => cmpPath(a.path, b.path));
+  units = [];
+  docs.forEach(d => {
+    d.units = splitUnits(d.text).map((md, i) => {
+      const notes = []; let layout = '';
+      const body = md.replace(/<!--([\s\S]*?)-->/g, (_, t) => { t = t.trim(); const m = t.match(/^layout:\s*(\w+)$/i); if (m) layout = m[1].toLowerCase(); else notes.push(t); return ''; });
+      return { doc: d, i, md: body, notes, layout };
+    });
+    d.start = units.length; units.push(...d.units);
+  });
+  buildCourse();
+  buildIndex();
+  $('#thumbs').dataset.deck = ''; cur = -1;
+  $('#q').value = '';
+  if (!docs.length) { $('#page').innerHTML = '<div class="welcome"><h2>Nenhum .md encontrado</h2></div>'; return; }
+  route();
+}
+function cmpPath(a, b) {
+  const A = a.split('/'), B = b.split('/');
+  for (let i = 0; i < Math.min(A.length, B.length); i++) {
+    if (A[i] === B[i]) continue;
+    const aDir = i < A.length - 1, bDir = i < B.length - 1;
+    if (aDir !== bDir) return aDir ? 1 : -1;
+    return collator.compare(A[i], B[i]);
+  }
+  return A.length - B.length;
+}
+
+/* ---------- modelo do curso: níveis (EAP.md) → módulos (README) → aulas (pastas) ---------- */
+function buildCourse() {
+  decks.clear(); modules = []; lessons = []; levels = []; profDocs = [];
+  const find = re => docs.find(d => re.test(d.path));
+  const readme = find(/^readme\.md$/i), eap = find(/^eap\.md$/i), jornada = find(/^jornada\.md$/i);
+  // problema que cada módulo resolve (tabelas da JORNADA)
+  const probs = {};
+  (jornada?.text || '').split(/\r?\n/).forEach(l => {
+    const m = l.match(/^\|\s*(\d{1,2})\s+[^|]*\|([^|]*)\|([^|]*)\|([^|]*)\|/);
+    if (m) probs[m[1].padStart(2, '0')] = { prob: m[2].trim(), sem: m[3].trim(), ganho: m[4].trim() };
+  });
+  const modDirs = [...new Set(docs.map(d => d.path.split('/')).filter(p => p.length > 1 && /^m[óo]dulo/i.test(p[0])).map(p => p[0]))].sort(collator.compare);
+  modules = modDirs.map(dir => {
+    const num = ((dir.match(/\d+/) || ['0'])[0]).padStart(2, '0');
+    const rd = docs.find(d => d.path.toLowerCase() === (dir + '/readme.md').toLowerCase());
+    const title = rd ? rd.title.replace(/^M[óo]dulo\s+\d+\s*[:·]\s*/i, '') : dir.replace(/^M[óo]dulo-\d+-?/i, '').replace(/-/g, ' ');
+    const qs = {}, names = {};
+    (rd?.text || '').split(/\r?\n/).forEach(l => {
+      const m = l.match(/^\|\s*\[(\d+)\s+([^\]]+)\]\(\.?\/?([^)]+?)\/?\)\s*\|\s*([^|]+)\|/);
+      if (m) { qs[m[3]] = m[4].trim(); names[m[3]] = m[2].trim(); }
+    });
+    const mod = { dir, num, title, readme: rd, objetivo: ((rd?.text || '').match(/^Objetivo:\s*(.+)$/m) || [])[1] || '', ...(probs[num] || {}), lessons: [] };
+    if (rd) rd.module = mod;
+    const lessonDirs = [...new Set(docs.map(d => d.path.split('/')).filter(p => p.length === 3 && p[0] === dir).map(p => p[1]))].sort(collator.compare);
+    mod.lessons = lessonDirs.map(ld => {
+      const ds = docs.filter(d => dirOf(d.path) === dir + '/' + ld);
+      const l = { mod, dir: dir + '/' + ld, num: ((ld.match(/\d+/) || ['0'])[0]).padStart(2, '0'),
+        title: names[ld] || (ds[0]?.title || '').replace(/^Aula\s+\d+\s*[:·]\s*/i, '') || ld.replace(/^Aula-\d+-?/i, '').replace(/-/g, ' '),
+        q: qs[ld] || '', units: ds.flatMap(d => d.units) };
+      l.units.forEach(u => u.lesson = l);
+      l.start = units.indexOf(l.units[0]);
+      decks.set(l.dir, l.units);
+      return l;
+    });
+    lessons.push(...mod.lessons);
+    return mod;
+  });
+  // demais documentos: cada um é seu próprio deck
+  docs.forEach(d => { if (!d.units[0]?.lesson) decks.set(d.path, d.units); });
+  profDocs = docs.filter(d => !d.path.includes('/'));
+  // níveis a partir da árvore do EAP
+  const tree = ((eap?.text || '').split(/^##\s+Árvore/m)[1] || '').split(/^##\s/m)[0];
+  let L = null;
+  tree.split(/\r?\n/).forEach(raw => {
+    const l = raw.replace(/^[\s│├└─]+/, '').trim();
+    const md = l.match(/^(M[óo]dulo-[\w-]+)/i);
+    if (md) { const mod = modules.find(x => x.dir === md[1]); if (mod && L && !mod.level) { mod.level = L; L.mods.push(mod); } return; }
+    const g = l.match(/^(N[íi]vel\s+\d+|Anexo)\s*·\s*([^:(]+?)\s*(?::\s*([^(]+?))?\s*(?:\((.+)\))?\s*$/);
+    if (g) { L = { name: g[1], title: g[2], sub: g[3] || '', note: g[4] || '', mods: [] }; levels.push(L); }
+  });
+  const rest = modules.filter(m => !m.level);
+  if (rest.length) { const R = { name: levels.length ? 'Outros' : 'Curso', title: levels.length ? 'Outros módulos' : 'Módulos', sub: '', note: '', mods: rest }; rest.forEach(m => m.level = R); levels.push(R); }
+  // título e descrição do curso
+  const course = readme?.title || 'Curso';
+  const desc = ((readme?.text || '').replace(/^\s*#.*$/m, '').trim().split(/\r?\n\s*\r?\n/)[0] || '').trim();
+  window.COURSE = { title: course, desc };
+  $('#brandTitle').textContent = course;
+}
+const lessonStatus = l => { const p = prog[l.dir] || 0; return p >= l.units.length ? 'done' : p > 0 ? 'started' : ''; };
+const modDone = m => m.lessons.filter(l => lessonStatus(l) === 'done').length;
+const deckKey = u => u.lesson ? u.lesson.dir : u.doc.path;
+const deckOf = u => decks.get(deckKey(u)) || [u];
+const sectionOf = u => deckOf(u)[0].doc.title;
+const lessonLabel = l => `Módulo ${l.mod.num} · Aula ${l.num}`;
+
+/* ---------- rotas: #/  ·  #/m/<módulo>  ·  #/s/<aula ou arquivo>/<slide> ---------- */
+function go(hash) { if (location.hash === hash) route(); else location.hash = hash; }
+function route() {
+  if (!docs.length) return;
+  const hs = decodeURI(location.hash.slice(1) || '/');
+  let m;
+  if ((m = hs.match(/^\/m\/(.+)$/))) { const mod = modules.find(x => x.dir === m[1]); if (mod) return showModule(mod); }
+  if ((m = hs.match(/^\/s\/(.+)\/(\d+)$/))) { const dk = decks.get(m[1]); if (dk) return show(units.indexOf(dk[Math.max(1, Math.min(+m[2], dk.length)) - 1])); }
+  showHome();
+}
+addEventListener('hashchange', route);
+function setHash(hs) {
+  if (location.hash === hs) return;
+  const sameDeck = location.hash.replace(/\/\d+$/, '') === hs.replace(/\/\d+$/, '');
+  history[sameDeck ? 'replaceState' : 'pushState'](null, '', hs);
+}
+function setCrumbs(parts) {
+  const c = $('#crumbs'); c.innerHTML = '';
+  parts.forEach((p, i) => {
+    if (i) c.appendChild(h('span', { class: 'sep' }, '›'));
+    if (i === parts.length - 1) c.appendChild(h('b', {}, esc(p[0])));
+    else c.appendChild(h('a', { onclick: () => go(p[1]) }, esc(p[0])));
+  });
+}
+
+/* ---------- barra lateral ---------- */
+function buildNav() {
+  if ($('#q').value.trim()) return renderSearch($('#q').value);
+  const nav = $('#nav'), top = nav.scrollTop; nav.innerHTML = '';
+  const u = view === 'lesson' ? units[cur] : null;
+  const openMod = view === 'module' ? viewMod : u?.lesson?.mod;
+  nav.appendChild(h('button', { class: 'nav-home' + (view === 'home' ? ' active' : ''), onclick: () => go('#/') }, 'Mapa do curso'));
+  levels.forEach(L => {
+    nav.appendChild(h('div', { class: 'lvl-label', title: L.sub || L.note }, esc(`${L.name} · ${L.title}`)));
+    L.mods.forEach(mod => {
+      const open = mod === openMod;
+      nav.appendChild(h('button', { class: 'mod-row' + (open ? ' open' : '') + (view === 'module' && open ? ' active' : ''), title: mod.prob || '',
+        onclick: () => go('#/m/' + encodeURI(mod.dir)) },
+        `<span class="mnum">${mod.num}</span><span>${esc(mod.title)}</span><span class="mp">${modDone(mod)}/${mod.lessons.length}</span>`));
+      if (!open) return;
+      const box = h('div', { class: 'les-rows' });
+      mod.lessons.forEach(l => box.appendChild(h('button', { class: `les-row ${lessonStatus(l)}${u?.lesson === l ? ' active' : ''}`, title: l.q,
+        onclick: () => show(l.start) }, `<span class="st"></span><span>${l.num} ${esc(l.title)}</span>`)));
+      nav.appendChild(box);
+    });
+  });
+  if (profDocs.length) {
+    const det = h('details', { class: 'prof' }, '<summary>Material do professor</summary>');
+    if (u && !u.lesson && !u.doc.module) det.open = true;
+    profDocs.forEach(d => det.appendChild(h('button', { class: 'doc-row' + (u?.doc === d ? ' active' : ''), onclick: () => show(d.start) }, esc(d.title))));
+    nav.appendChild(det);
+  }
+  nav.scrollTop = top;
+  nav.querySelector('.les-row.active, .mod-row.active, .doc-row.active')?.scrollIntoView({ block: 'nearest' });
+}
+
+/* ---------- busca por slide ---------- */
+const plain = md => md.replace(/```[^\n]*\n/g, ' ').replace(/```/g, ' ').replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+  .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/^\s*\|?\s*:?-{3,}.*$/gm, ' ').replace(/[#>*_`|]/g, ' ').replace(/\s+/g, ' ').trim();
+function buildIndex() {
+  searchIdx = units.map(u => {
+    const t = (u.md.match(/^\s*#{1,3}\s+(.+)$/m) || [])[1]?.trim() || u.doc.title;
+    const text = plain(u.md);
+    return { u, title: t, text, nt: norm(t), nx: norm(text) };
+  });
+}
+function marked_(text, ntext, toks) {
+  const rs = [];
+  toks.forEach(t => { let i = -1; while ((i = ntext.indexOf(t, i + 1)) >= 0) rs.push([i, i + t.length]); });
+  rs.sort((a, b) => a[0] - b[0]);
+  let out = '', p = 0;
+  for (const [a, b] of rs) { if (a < p) continue; out += esc(text.slice(p, a)) + '<mark>' + esc(text.slice(a, b)) + '</mark>'; p = b; }
+  return out + esc(text.slice(p));
+}
+function renderSearch(q) {
+  const nav = $('#nav'); nav.innerHTML = '';
+  const toks = norm(q.trim()).split(/\s+/).filter(Boolean);
+  const hits = searchIdx.filter(e => toks.every(t => e.nt.includes(t) || e.nx.includes(t)));
+  if (!hits.length) { nav.innerHTML = '<div class="empty-nav">Nada encontrado. Tente outra palavra.</div>'; return; }
+  const MAX = 120;
+  nav.appendChild(h('div', { class: 'res-count' }, hits.length > MAX ? `${hits.length} slides, mostrando ${MAX}` : `${hits.length} slide${hits.length > 1 ? 's' : ''}`));
+  let lastKey = null;
+  hits.slice(0, MAX).forEach(e => {
+    const u = e.u, k = deckKey(u);
+    if (k !== lastKey) {
+      lastKey = k;
+      const lbl = u.lesson ? `${u.lesson.mod.num}.${u.lesson.num} · ${u.lesson.title}` : u.doc.module ? `Módulo ${u.doc.module.num} · Visão geral` : `Professor · ${u.doc.title}`;
+      nav.appendChild(h('div', { class: 'res-group' }, esc(lbl)));
+    }
+    const i = Math.max(0, ...toks.map(t => e.nx.indexOf(t)).filter(x => x >= 0).slice(0, 1));
+    const a = Math.max(0, i - 40), b = Math.min(e.text.length, i + 90);
+    const snip = (a ? '…' : '') + marked_(e.text.slice(a, b), e.nx.slice(a, b), toks) + (b < e.text.length ? '…' : '');
+    nav.appendChild(h('button', { class: 'res', onclick: () => { show(units.indexOf(u)); } },
+      `<b>${marked_(e.title, e.nt, toks)}</b><span>${snip}</span>`));
+  });
+}
+$('#q').oninput = () => buildNav();
+$('#q').onkeydown = e => { if (e.key === 'Escape') { e.target.value = ''; buildNav(); e.target.blur(); } if (e.key === 'Enter') $('#nav .res')?.click(); };
+
+/* ---------- mapa do curso ---------- */
+function showHome() {
+  setView('home'); cur = -1;
+  document.title = COURSE.title;
+  setCrumbs([['Mapa do curso', '#/']]);
+  const pg = h('div', { class: 'pg' });
+  const total = lessons.reduce((s, l) => s + l.units.length, 0), done = lessons.filter(l => lessonStatus(l) === 'done').length;
+  const hero = h('header', { class: 'hero' }, `<div class="eyebrow">Mapa do curso</div><h1>${esc(COURSE.title)}</h1><p>${inl(COURSE.desc)}</p>
+    <div class="stats"><span><b>${levels.length}</b>níveis</span><span><b>${modules.length}</b>módulos</span><span><b>${lessons.length}</b>aulas</span><span><b>${done}</b>aulas concluídas</span></div>`);
+  const ctas = h('div', { class: 'ctas' });
+  const last = (store.get('last') || '').match(/^#\/s\/(.+)\/(\d+)$/);
+  const lastDk = last && decks.get(decodeURI(last[1])), lastU = lastDk?.[Math.min(+last[2], lastDk.length) - 1];
+  if (lastU?.lesson) ctas.appendChild(h('button', { class: 'cta', onclick: () => go(store.get('last')) },
+    `▶ <span>Continuar de onde parou<small>${esc(lessonLabel(lastU.lesson))}: ${esc(lastU.lesson.title)}, slide ${last[2]}</small></span>`));
+  if (lessons[0]) ctas.appendChild(h('button', { class: 'cta' + (lastU?.lesson ? ' ghost' : ''), onclick: () => show(lessons[0].start) },
+    `${lastU?.lesson ? '' : '▶ '}<span>Começar do início<small>${esc(lessonLabel(lessons[0]))}: ${esc(lessons[0].title)}</small></span>`));
+  hero.appendChild(ctas); pg.appendChild(hero);
+  levels.forEach(L => {
+    const sec = h('section', { class: 'level' }, `<div class="level-head"><span class="lvl">${esc(L.name)}</span><h2>${esc(L.title)}</h2><p>${esc(L.sub || L.note)}</p></div>`);
+    const grid = h('div', { class: 'mod-grid' });
+    L.mods.forEach(mod => {
+      const d = modDone(mod), n = mod.lessons.length;
+      grid.appendChild(h('button', { class: 'mod-card', onclick: () => go('#/m/' + encodeURI(mod.dir)) },
+        `<span class="mnum">MÓDULO ${mod.num}</span><h3>${esc(mod.title)}</h3><p>${inl(mod.prob || mod.objetivo || '')}</p>
+         <div class="meta"><span>${n} aula${n > 1 ? 's' : ''}</span>${d ? `<span class="meter" title="${d} de ${n} concluídas"><i style="width:${d / n * 100}%"></i></span>` : ''}</div>`));
+    });
+    sec.appendChild(grid); pg.appendChild(sec);
+  });
+  if (profDocs.length) {
+    const pl = h('div', { class: 'prof-links' }, '<span>Material do professor:</span>');
+    profDocs.forEach(d => pl.appendChild(h('button', { onclick: () => show(d.start) }, esc(d.title))));
+    pg.appendChild(pl);
+  }
+  $('#page').replaceChildren(pg); $('#page').scrollTo(0, 0);
+  buildNav();
+}
+
+/* ---------- página do módulo ---------- */
+let viewMod = null;
+function readmeSections(text) {
+  const out = []; const parts = text.split(/^##\s+/m).slice(1);
+  parts.forEach(p => { const i = p.indexOf('\n'); out.push({ title: p.slice(0, i).trim(), body: p.slice(i + 1).trim() }); });
+  return out;
+}
+function showModule(mod) {
+  setView('module'); viewMod = mod; cur = -1;
+  document.title = `Módulo ${mod.num}: ${mod.title}`;
+  setCrumbs([['Mapa do curso', '#/'], [`Módulo ${mod.num} · ${mod.title}`]]);
+  const pg = h('div', { class: 'pg' });
+  pg.appendChild(h('button', { class: 'back', onclick: () => go('#/') }, '← Mapa do curso'));
+  const head = h('header', { class: 'mod-head' }, `<div class="eyebrow">${esc(mod.level ? `${mod.level.name} · ${mod.level.title}` : '')} · Módulo ${mod.num}</div>
+    <h1>${esc(mod.title)}</h1>${mod.prob ? `<p class="q">${inl(mod.prob)}</p>` : ''}<p class="obj">${inl(mod.objetivo)}</p>`);
+  pg.appendChild(head);
+  const firstOpen = mod.lessons.find(l => lessonStatus(l) !== 'done') || mod.lessons[0];
+  if (firstOpen) pg.appendChild(h('div', { class: 'ctas', style: 'margin-top:20px' }, '')).appendChild(h('button', { class: 'cta', onclick: () => show(firstOpen.start) },
+    `▶ <span>${lessonStatus(firstOpen) ? 'Continuar' : modDone(mod) ? 'Próxima aula' : 'Começar o módulo'}<small>Aula ${firstOpen.num}: ${esc(firstOpen.title)}</small></span>`));
+  const list = h('div', { class: 'les-list' });
+  mod.lessons.forEach(l => {
+    const st = lessonStatus(l), p = prog[l.dir] || 0;
+    list.appendChild(h('button', { class: 'les ' + st, onclick: () => show(l.start) },
+      `<span class="ln">${st === 'done' ? '✓' : l.num}</span><div><h3>Aula ${l.num}: ${esc(l.title)}</h3>${l.q ? `<p>${inl(l.q)}</p>` : ''}</div>
+       <span class="cnt">${st === 'done' ? '<b>Concluída</b>' : st ? `<b>${p} de ${l.units.length}</b>` : ''}${l.units.length} slides</span>`));
+  });
+  pg.appendChild(list);
+  if (mod.readme) {
+    const secs = readmeSections(mod.readme.text).filter(s => !/^aulas$/i.test(s.title));
+    const why = secs.find(s => /^por que/i.test(s.title));
+    const grid = h('div', { class: 'info-grid' });
+    secs.filter(s => s !== why).forEach(s => {
+      const box = h('div', { class: 'info' }, `<h4>${esc(s.title)}</h4>`);
+      const body = renderMd(s.body, mod.readme.path); body.classList.add('md'); box.appendChild(body); grid.appendChild(box);
+    });
+    if (grid.children.length) pg.appendChild(grid);
+    if (why) { const det = h('details', { class: 'why' }, `<summary>${esc(why.title)}</summary>`); const b = renderMd(why.body, mod.readme.path); b.classList.add('md'); det.appendChild(b); pg.appendChild(det); }
+  }
+  const i = modules.indexOf(mod), pager = h('div', { class: 'mod-pager' });
+  pager.appendChild(modules[i - 1] ? h('button', { class: 'prev', onclick: () => go('#/m/' + encodeURI(modules[i - 1].dir)) }, `<small>← Módulo anterior</small>${modules[i - 1].num} ${esc(modules[i - 1].title)}`) : h('span'));
+  if (modules[i + 1]) pager.appendChild(h('button', { class: 'next', onclick: () => go('#/m/' + encodeURI(modules[i + 1].dir)) }, `<small>Próximo módulo →</small>${modules[i + 1].num} ${esc(modules[i + 1].title)}`));
+  pg.appendChild(pager);
+  $('#page').replaceChildren(pg); $('#page').scrollTo(0, 0);
+  setHash('#/m/' + encodeURI(mod.dir));
+  buildNav();
+}
+
+/* ---------- renderização Markdown ---------- */
+marked.use({ gfm: true, breaks: false });
+function resolve(base, rel) {
+  const parts = base.split('/').slice(0, -1);
+  for (const seg of decodeURIComponent(rel).split('/')) { if (seg === '..') parts.pop(); else if (seg && seg !== '.') parts.push(seg); }
+  return parts.join('/');
+}
+function findDoc(target) {
+  const t = target.replace(/\/?$/, '/');
+  return docs.find(x => x.path === target) ||
+    docs.find(x => x.path.startsWith(t) && /^readme\.md$/i.test(x.path.slice(t.length))) ||
+    docs.find(x => x.path.startsWith(t));
+}
+/* Converte o MD em HTML e aplica layouts derivados da estrutura:
+   "A → B → C" vira fluxo; "**Rótulo**: texto" vira destaque; vários ### viram cartões. */
+function renderMd(md, path, { interactive = true, highlight = true } = {}) {
+  const el = document.createElement('div');
+  el.innerHTML = DOMPurify.sanitize(marked.parse(md));
+  el.querySelectorAll('table').forEach(t => { const w = document.createElement('div'); w.className = 'table-wrap'; t.replaceWith(w); w.appendChild(t); });
+  el.querySelectorAll('p').forEach(p => {
+    const txt = p.textContent.trim();
+    const kids = [...p.childNodes].filter(n => n.nodeType === 1 || n.textContent.trim());
+    if ((txt.match(/→/g) || []).length >= 2 && !p.querySelector('a,img') && txt.length < 220) {
+      const m = txt.match(/^([^:→]{1,28}:)\s*(.+)$/);
+      const flow = document.createElement('div'); flow.className = 'flow';
+      if (m) { const l = document.createElement('span'); l.className = 'flow-label'; l.textContent = m[1]; flow.appendChild(l); }
+      (m ? m[2] : txt).split(/\s*→\s*/).filter(Boolean).forEach((s, i) => {
+        const step = document.createElement('span'); step.className = 'step';
+        if (i) { const a = document.createElement('span'); a.className = 'arr'; a.textContent = '→'; step.appendChild(a); }
+        const pill = document.createElement('span'); pill.className = 'pill'; pill.textContent = s; step.appendChild(pill);
+        flow.appendChild(step);
+      });
+      p.replaceWith(flow); return;
+    }
+    if (kids.length === 1 && kids[0].tagName === 'STRONG') { p.className = 'eyebrow'; return; }
+    if (kids.length === 1 && kids[0].tagName === 'EM') { p.className = 'subtitle'; return; }
+    const first = kids[0];
+    if (first && first.tagName === 'STRONG' && kids.length > 1) {
+      const after = first.nextSibling?.textContent || '';
+      if (/:\s*$/.test(first.textContent) || /^\s*:/.test(after)) p.className = 'callout';
+    }
+    if (!p.className && p.parentElement === el && /:\s*$/.test(txt) && txt.length < 90) p.className = 'lead';
+  });
+  // ### consecutivos -> grade de cartões
+  const out = []; let card = null, grid = null;
+  for (const n of [...el.childNodes]) {
+    if (n.nodeType === 1 && n.tagName === 'H3') {
+      if (!grid) { grid = document.createElement('div'); grid.className = 'grid'; out.push(grid); }
+      card = document.createElement('div'); card.className = 'card'; grid.appendChild(card); card.appendChild(n);
+    } else if (n.nodeType === 1 && /^(H1|H2|HR)$/.test(n.tagName)) { card = grid = null; out.push(n); }
+    else if (card) card.appendChild(n); else out.push(n);
+  }
+  el.replaceChildren(...out);
+  el.querySelectorAll('.grid').forEach(g => {
+    const k = g.children.length;
+    if (k < 2) { g.replaceWith(...[...g.firstChild.childNodes]); return; }
+    [...g.children].forEach(c => { const hh = c.querySelector('h3'); const m = hh && hh.textContent.match(/^(\d+)[.)\-]?\s+(.+)$/);
+      if (m) hh.innerHTML = `<span class="num">${m[1].padStart(2, '0')}</span>${esc(m[2])}`; });
+    g.style.setProperty('--cols', k <= 3 ? k : k === 4 ? (g.textContent.length < 260 ? 4 : 2) : 3);
+  });
+  el.querySelectorAll('img').forEach(img => {
+    const src = img.getAttribute('src'); if (!src || /^(https?:|data:)/.test(src)) return;
+    const k = resolve(path, src), f = files.get(k);
+    if (f) { if (!urls.has(k)) urls.set(k, URL.createObjectURL(f)); img.src = urls.get(k); }
+  });
+  if (highlight) el.querySelectorAll('pre > code').forEach(c => hljs.highlightElement(c));
+  const LANG = { ts: 'typescript', typescript: 'typescript', js: 'javascript', javascript: 'javascript', bash: 'terminal', sh: 'terminal',
+    shell: 'terminal', console: 'terminal', json: 'json', md: 'markdown', markdown: 'markdown', py: 'python', python: 'python',
+    html: 'html', css: 'css', sql: 'sql', yaml: 'yaml', yml: 'yaml' };
+  el.querySelectorAll('pre').forEach(pre => {
+    const lang = ((pre.querySelector('code')?.className || '').match(/language-([\w-]+)/) || [])[1] || '';
+    const t = document.createElement('div'); t.className = 'term';
+    t.innerHTML = `<div class="term-bar"><i></i><i></i><i></i><span>${esc(LANG[lang] || lang)}</span></div>`;
+    pre.replaceWith(t); t.appendChild(pre);
+  });
+  el.querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (/^(https?:|mailto:)/.test(href)) { a.target = '_blank'; a.rel = 'noopener'; return; }
+    if (href.startsWith('#') || !interactive) return;
+    const dest = findDoc(resolve(path, href.split('#')[0]));
+    if (dest) a.onclick = e => { e.preventDefault(); if (pres) { const k = deck.indexOf(units[dest.start]); if (k >= 0) return showSlide(k); stopPresentation(); } show(dest.start); };
+    else a.style.opacity = .6;
+  });
+  return el;
+}
+
+/* ---------- palco do slide ---------- */
+const AUTOR = 'Prof. Dionésio Guerra';   // aparece na capa e no rodapé; deixe '' para ocultar
+const KW = /^((?:Exercício|Exercicio|Limite|Fase|Aula|Módulo|Modulo|Nível|Nivel|Parte|Bloco|Questão|Questao|Etapa|Passo)\s+\d+)\s*[:·]\s*(.+)$/i;
+/* "Exercício 2: Título" -> etiqueta "Exercício 2" + título; "Tema · Título" -> etiqueta "Tema" + título */
+function splitTitle(t) {
+  t = (t || '').trim(); const m = t.match(KW);
+  if (m) return { pre: m[1], title: m[2], num: m[1].match(/\d+/)[0] };
+  const i = t.indexOf(' · ');
+  if (i > 0) { const r = t.slice(i + 3); return { pre: t.slice(0, i), title: r.charAt(0).toUpperCase() + r.slice(1) }; }
+  return { pre: '', title: t };
+}
+/* capa | secao | escuro | '' (conteúdo). Pode ser forçado com <!-- layout: capa --> */
+function layoutOf(u, body) {
+  if (u.layout) return u.layout;
+  const file = u.doc.path.split('/').pop();
+  const heads = body.querySelectorAll('h1,h2,h3,h4').length, blocks = body.children.length, first = body.firstElementChild;
+  if (/(^|-)capa\.md$/i.test(file)) return 'capa';
+  const firstInDir = docs.find(d => dirOf(d.path) === dirOf(u.doc.path)) === u.doc;
+  if (firstInDir && u.i === 0 && u.doc.units.length > 1 && first?.tagName === 'H1' && heads === 1 && blocks <= 5) return 'capa';
+  if (first && /^H[12]$/.test(first.tagName) && heads === 1 && blocks <= 2 && u.doc.units.length > 1) return 'secao';
+  if (/fechamento|encerramento/i.test(file)) return 'escuro';
+  return '';
+}
+function buildStage(u, n, total, opts = {}) {
+  const body = renderMd(u.md, u.doc.path, opts);
+  const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+  const st = mk('div', 'stage md'), sb = mk('div', 's-body');
+  const layout = layoutOf(u, body);
+  const topic = splitTitle(opts.section || '').title;
+  if (layout === 'capa') {
+    st.classList.add('capa');
+    const hd = body.querySelector('h1,h2'), s = splitTitle(hd ? hd.textContent : u.doc.title);
+    const eb = body.querySelector('p.eyebrow');
+    const left = mk('div', 'cover-left');
+    left.append(mk('div', 'eyebrow-t', eb ? eb.textContent : topic), mk('h1', '', s.title));
+    if (AUTOR) left.appendChild(mk('p', 'author', AUTOR));
+    if (s.pre) left.appendChild(mk('span', 'badge-pill', s.pre));
+    hd?.remove(); eb?.remove();
+    const cover = mk('div', 'cover'); cover.appendChild(left);
+    if (body.children.length) { const card = mk('div', 'cover-card'); card.append(...body.childNodes); cover.appendChild(card); }
+    else cover.classList.add('solo');
+    sb.appendChild(cover);
+  } else if (layout === 'secao') {
+    st.classList.add('secao', 'dark');
+    const hd = body.firstElementChild, s = splitTitle(hd.textContent);
+    if (s.num) sb.appendChild(mk('div', 'sec-num', s.num.padStart(2, '0')));
+    else if (s.pre) sb.appendChild(mk('div', 'eyebrow-t', s.pre));
+    hd.textContent = s.title;
+    sb.append(...body.childNodes);
+  } else {
+    if (layout === 'escuro') st.classList.add('dark');
+    const hd = body.firstElementChild;
+    if (hd && /^H[12]$/.test(hd.tagName)) {
+      const s = splitTitle(hd.textContent), head = mk('div', 's-head');
+      const eb = s.pre || (topic !== hd.textContent.trim() ? topic : '');
+      if (eb) head.appendChild(mk('div', 'eyebrow-t', eb));
+      if (s.pre) hd.textContent = s.title;
+      head.appendChild(hd);
+      if (body.firstElementChild?.classList.contains('subtitle')) head.appendChild(body.firstElementChild);
+      st.appendChild(head);
+    }
+    sb.append(...body.childNodes);
+  }
+  st.appendChild(sb);
+  const ft = mk('div', 's-foot');
+  const where = u.lesson ? `Módulo ${u.lesson.mod.num} · ${u.lesson.mod.title}  ·  Aula ${u.lesson.num} · ${u.lesson.title}` : (opts.section || '').replace(/:\s*/, ' · ');
+  const label = [where, AUTOR].filter(Boolean).join('  ·  ');
+  ft.innerHTML = `<span>${esc(label)}</span><span>${n} / ${total}</span>`;
+  st.appendChild(ft);
+  return st;
+}
+/* Ajuste automático: reduz a fonte até o conteúdo caber (como o "autoajuste" do PowerPoint). */
+function fit(st) {
+  const sb = st.querySelector('.s-body'); let size = 34;
+  sb.style.fontSize = size + 'px';
+  while (sb.scrollHeight > sb.clientHeight + 1 && size > 24) sb.style.fontSize = --size + 'px';
+  st.classList.toggle('scroll', sb.scrollHeight > sb.clientHeight + 1);
+  st.querySelectorAll('img').forEach(i => { if (!i.complete) i.addEventListener('load', () => fit(st), { once: true }); });
+}
+function place(container, st) {
+  const fr = document.createElement('div'); fr.className = 'frame'; fr.appendChild(st);
+  container.replaceChildren(fr); fit(st); scale(container); return fr;
+}
+function scale(container) {
+  const fr = container.querySelector('.frame'); if (!fr) return;
+  const cs = getComputedStyle(container);
+  const w = container.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const hh = container.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const s = Math.max(.1, Math.min(w / W, hh / H));
+  fr.style.width = W * s + 'px'; fr.style.height = H * s + 'px';
+  fr.firstChild.style.transform = `scale(${s})`;
+}
+function scaleAll() { scale($('#viewer')); if (pres) scale($('#pview')); }
+new ResizeObserver(() => scale($('#viewer'))).observe($('#viewer'));
+new ResizeObserver(() => pres && scale($('#pview'))).observe($('#pview'));
+
+/* ---------- exibir uma aula (ou documento) ---------- */
+const lessonAt = d => l => lessons[lessons.indexOf(l) + d];
+function show(idx) {
+  if (!units.length) return;
+  cur = Math.min(Math.max(idx, 0), units.length - 1);
+  const u = units[cur];
+  if (u.doc.module) return showModule(u.doc.module);   // README do módulo abre a página do módulo
+  setView('lesson');
+  const dk = deckOf(u), pos = dk.indexOf(u), l = u.lesson;
+  const hs = '#/s/' + encodeURI(deckKey(u)) + '/' + (pos + 1);
+  setHash(hs); store.set('last', hs);
+  if (l) { prog[l.dir] = Math.max(prog[l.dir] || 0, pos + 1); saveProg(); }
+  setCrumbs(l ? [['Mapa do curso', '#/'], [`Módulo ${l.mod.num} · ${l.mod.title}`, '#/m/' + encodeURI(l.mod.dir)], [`Aula ${l.num}: ${l.title}`]]
+    : [['Mapa do curso', '#/'], ['Material do professor', '#/'], [u.doc.title]]);
+  document.title = (l ? `${l.num} ${l.title}` : u.doc.title) + ' | ' + COURSE.title;
+  buildNav();
+  mode === 'slides' ? showSlides(u) : showDoc(u);
+}
+function step(d) {
+  const u = units[cur], dk = deckOf(u), pos = dk.indexOf(u), l = u.lesson;
+  if (mode === 'doc') { const o = l && lessonAt(d)(l); if (o) show(o.start); return; }
+  if (dk[pos + d]) return show(units.indexOf(dk[pos + d]));
+  const o = l && lessonAt(d)(l); if (!o) return;
+  show(d > 0 ? o.start : units.indexOf(o.units.at(-1)));
+}
+function showSlides(u) {
+  const dk = deckOf(u), pos = dk.indexOf(u), l = u.lesson, nl = l && lessonAt(1)(l), pl = l && lessonAt(-1)(l);
+  place($('#viewer'), buildStage(u, pos + 1, dk.length, { section: sectionOf(u) }));
+  $('#ctrl').hidden = false;
+  $('#count').textContent = `${pos + 1} / ${dk.length}`;
+  const last = pos === dk.length - 1;
+  $('#prev').disabled = pos === 0 && !pl; $('#next').disabled = last && !nl;
+  $('#next').hidden = last && !!nl;
+  const nb = $('#nextLesson'); nb.hidden = !(last && nl);
+  if (last && nl) { nb.textContent = `Próxima aula: ${nl.title} →`; nb.title = lessonLabel(nl); nb.onclick = () => show(nl.start); }
+  const np = $('#notespane'); np.hidden = false;
+  np.classList.toggle('empty', !u.notes.length);
+  np.innerHTML = '<span class="lbl">Notas do professor</span>';
+  np.append(u.notes.join('\n\n') || 'Sem notas neste slide.');
+  buildThumbs(u, dk);
+  scale($('#viewer'));
+}
+function buildThumbs(u, dk) {
+  const box = $('#thumbs'), key = deckKey(u) + '|' + dk.length;
+  if (box.dataset.deck !== key) {
+    box.dataset.deck = key; box.innerHTML = '';
+    dk.forEach((x, i) => {
+      const el = document.createElement('div'); el.className = 'thumb'; el._u = x;
+      el.innerHTML = `<span class="n">${i + 1}</span><div class="t"></div>`;
+      const st = buildStage(x, i + 1, dk.length, { interactive: false, highlight: false, section: sectionOf(x) });
+      el.querySelector('.t').appendChild(st);
+      el.onclick = () => show(units.indexOf(x));
+      box.appendChild(el); fit(st);
+    });
+  }
+  box.querySelectorAll('.thumb').forEach(t => t.classList.toggle('active', t._u === u));
+  box.querySelector('.thumb.active')?.scrollIntoView({ block: 'nearest' });
+}
+/* Modo leitura: a aula inteira como um texto corrido. */
+function showDoc(u) {
+  const art = $('#doc'), dk = deckOf(u), l = u.lesson; art.innerHTML = '';
+  if (l) art.appendChild(h('div', { class: 'eyebrow' }, esc(lessonLabel(l))));
+  dk.forEach(x => {
+    const w = document.createElement('section'); w.className = 'unit';
+    w.append(...renderMd(x.md, x.doc.path).childNodes);
+    w.querySelectorAll('pre > code').forEach(c => {
+      const b = document.createElement('button'); b.className = 'copy'; b.textContent = 'Copiar';
+      b.onclick = async () => { await navigator.clipboard.writeText(c.innerText); b.textContent = 'Copiado ✓'; setTimeout(() => b.textContent = 'Copiar', 1400); };
+      c.parentElement.appendChild(b);
+    });
+    if (x.notes.length) { const n = document.createElement('div'); n.className = 'note'; n.innerHTML = '<strong>Notas do professor</strong>'; n.append(x.notes.join('\n\n')); w.appendChild(n); }
+    art.appendChild(w); x._el = w;
+  });
+  if (l) {
+    prog[l.dir] = l.units.length; saveProg();
+    const pager = document.createElement('div'); pager.className = 'pager';
+    const mk = (o, cls, lbl) => { const b = document.createElement('button'); b.className = cls;
+      b.innerHTML = `<small>${lbl}</small><span>${esc(lessonLabel(o))}: ${esc(o.title)}</span>`; b.onclick = () => show(o.start); return b; };
+    const p = lessonAt(-1)(l), n = lessonAt(1)(l);
+    pager.appendChild(p ? mk(p, 'prev', '← Aula anterior') : document.createElement('span'));
+    if (n) pager.appendChild(mk(n, 'next', 'Próxima aula →'));
+    art.appendChild(pager);
+  }
+  if (dk.indexOf(u) > 0) u._el.scrollIntoView(); else $('#docview').scrollTo(0, 0);
+}
+$('#prev').onclick = () => step(-1);
+$('#next').onclick = () => step(1);
+
+/* ---------- apresentação ---------- */
+let pres = false, deck = [], si = 0;
+function startPresentation() {
+  if (!units.length || view !== 'lesson') return;
+  const u = units[Math.max(cur, 0)];
+  deck = deckOf(u); si = Math.max(0, deck.indexOf(u));
+  pres = true; $('#pres').hidden = false;
+  try { $('#pres').requestFullscreen?.().catch(() => {}); } catch {}
+  showSlide(si);
+}
+function showSlide(i) {
+  si = Math.min(Math.max(i, 0), deck.length - 1);
+  const u = deck[si];
+  place($('#pview'), buildStage(u, si + 1, deck.length, { section: sectionOf(u) }));
+  $('#pnotes-body').textContent = u.notes.join('\n\n') || '(sem notas neste slide)';
+  $('#pcount').textContent = `${si + 1} / ${deck.length}`;
+  $('#ptitle').textContent = u.lesson ? `${lessonLabel(u.lesson)}: ${u.lesson.title}` : sectionOf(u);
+  $('#pbar').style.width = ((si + 1) / deck.length * 100) + '%';
+  cur = units.indexOf(u);
+  if (u.lesson) { prog[u.lesson.dir] = Math.max(prog[u.lesson.dir] || 0, si + 1); saveProg(); }
+}
+function stopPresentation() {
+  pres = false; $('#pres').hidden = true;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  show(cur);
+}
+$('#present').onclick = startPresentation;
+$('#pprev').onclick = () => showSlide(si - 1);
+$('#pnext').onclick = () => showSlide(si + 1);
+document.addEventListener('fullscreenchange', () => requestAnimationFrame(scaleAll));
+
+addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const typing = /input|textarea/i.test(document.activeElement.tagName);
+  const k = e.key;
+  if (pres) {
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(k)) { e.preventDefault(); showSlide(si + 1); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k)) { e.preventDefault(); showSlide(si - 1); }
+    else if (k === 'Home') showSlide(0);
+    else if (k === 'End') showSlide(deck.length - 1);
+    else if (k === 'n' || k === 'N') { $('#pres').classList.toggle('show-notes'); requestAnimationFrame(scaleAll); }
+    else if (k === 'f' || k === 'F') { document.fullscreenElement ? document.exitFullscreen() : $('#pres').requestFullscreen?.(); }
+    else if (k === 'Escape' && !document.fullscreenElement) stopPresentation();
+    return;
+  }
+  if (typing) return;
+  if (k === '/') { e.preventDefault(); return $('#q').focus(); }
+  if (view !== 'lesson' || cur < 0) return;
+  if (k === 'F5' || k === 'p' || k === 'P') { e.preventDefault(); return startPresentation(); }
+  if (k === 'ArrowRight' || k === 'PageDown') { e.preventDefault(); step(1); }
+  if (k === 'ArrowLeft' || k === 'PageUp') { e.preventDefault(); step(-1); }
+});
+</script>
+</body>
+</html>
